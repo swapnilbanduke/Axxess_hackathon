@@ -5,6 +5,8 @@ import openai
 import os
 from dotenv import load_dotenv
 
+
+st.set_page_config(layout="wide")
 # Load environment variables from .env file
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -22,9 +24,47 @@ def get_llm_output(input_details: dict) -> str:
     Build a prompt from the user input details and call OpenAI's API
     to get a customized healthcare plan.
     """
-    prompt = (
-        "Create a personalized healthcare plan based on the following patient details:\n"
-        f"Age: {input_details['age']}\n"
+    instruction_1 = ('''You are a Clinical Data Analyst with Diagnostic Intuition. Your task is to generate a structured and easy-to-follow healthcare plan using cardiovascular health data.
+
+### INSTRUCTIONS:
+Use the *FIXED SIX-SECTION FORMAT, with each point having exactly **two concise sentences. Keep it **actionable, direct, and engaging*.
+
+                     Give the advice in the friendly way to the patient. He should feels like doctor friend is giving him advice.
+#### Output Format:
+1. *Patient Overview:*  
+   - Highlight key risks and overall heart health status.  
+   - Keep it sharp—only the *most important* findings.  
+
+2. *Heart Health Risks & Recommendations:*  
+   - Prioritize the top risks (blood pressure, cholesterol, ECG anomalies).  
+   - Offer *precise* steps (e.g., "Reduce sodium by 50%" instead of "Reduce salt intake").  
+
+3. *Exercise & Activity Plan:*  
+   - Set an *intensity level* (Low, Moderate, High) based on risk.  
+   - Provide *a tailored exercise tip* (e.g., "If angina occurs, switch to low-impact activities like swimming").  
+
+4. *Medical Follow-up & Monitoring:*  
+   - Flag urgent risks requiring *immediate* medical attention.  
+   - Define a *monitoring routine* (e.g., "Track blood pressure daily, check cholesterol every 3 months").  
+
+5. *Dietary Adjustments for Better Heart Health:*  
+   - Specify *must-have and must-avoid* foods.  
+   - Keep it direct (e.g., "Eat fatty fish twice a week, cut out trans fats").  
+
+6. *Doctor Consultation Recommendation:*  
+   - If the system detects any serious health risks, clearly *flag the need for a medical visit* (e.g., "See a doctor immediately for potential heart complications").  
+   - Otherwise, provide *guidance on when to seek medical advice* (e.g., "Schedule a check-up if symptoms persist or worsen over the next few weeks").  
+
+#### Additional Guidelines:
+- *No fluff, no repetition.*  
+- *Bold key terms* to emphasize risks & actions.  
+- *Keep readability high—focus on clarity over medical jargon.*  
+- *Ensure recommendations remain suggestive, not definitive, prioritizing accessibility for underserved communities.*
+                     
+                     Mention at last that these are the general advice and for more specific advice, consult a doctor
+''')
+                    
+    instruction_2 = (f"Age: {input_details['age']}\n"
         f"Sex: {input_details['sex']}\n"
         f"Chest Pain Type: {input_details['chest pain']}\n"
         f"Resting Blood Pressure: {input_details['resting blood pressure']}\n"
@@ -37,8 +77,11 @@ def get_llm_output(input_details: dict) -> str:
         f"Slope of Peak Exercise ST Segment: {input_details['slope']}\n"
         f"Number of Major Vessels: {input_details['number of major vessels']}\n"
         f"Thalassemia: {input_details['thalassemia']}\n\n"
-        "Based on these details, please provide a customized healthcare plan with recommendations."
     )
+
+
+    prompt = instruction_1 + instruction_2
+        
     
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -56,7 +99,7 @@ def main():
     st.title('Heart Disease Prediction with Customized Healthcare Plan')
 
     # Divide the page into two columns
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1,2])
 
     # LEFT COLUMN: User Input Form
     with col1:
@@ -136,10 +179,10 @@ def main():
             # Display ML model prediction result
             if st.session_state.prediction == 1:
                 bg_color = 'red'
-                prediction_result = 'Positive'
+                prediction_result = '⚠️ "Potential Concern Found – Stay Proactive, Please Consult a Doctor"'
             else:
                 bg_color = 'green'
-                prediction_result = 'Negative'
+                prediction_result = '🎉 "Great News! No Issues Detected, Keep Up the Good Habits!'
             confidence = st.session_state.confidence
             st.markdown(
                 f"<p style='background-color:{bg_color}; color:white; padding:10px;'>"
@@ -148,7 +191,10 @@ def main():
             )
             # Get and display LLM output based on input details
             input_details = st.session_state.input_details
-            llm_output = get_llm_output(input_details)
+
+            with st.spinner("Generating healthcare plan..."):
+                llm_output = get_llm_output(st.session_state.input_details)
+
             st.markdown("### Customized Healthcare Plan")
             st.write(llm_output)
         else:
